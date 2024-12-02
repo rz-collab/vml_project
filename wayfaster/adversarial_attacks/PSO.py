@@ -1,15 +1,13 @@
 import numpy as np
 from typing import Callable
 import torch
-import functools
-import torch.multiprocessing as mp
 import tqdm
-import os
 
 
 class Swarm:
     """
     Manages the state of particles (positions, velocities, personal bests, global best)
+    A particle is a torch.Tensor(dim).
     """
 
     def __init__(self, n_particles, dim, c1, c2, w, pos_constraint, vel_constraint):
@@ -26,7 +24,7 @@ class Swarm:
         self.vel_constraint = vel_constraint
 
         # Storage:
-        # Positions and velocities are initialized randomly
+        # Positions and velocities are initialized randomly and clipped.
         pos_lower_bound = pos_constraint[0]
         pos_upper_bound = pos_constraint[1]
         vel_lower_bound = vel_constraint[0]
@@ -94,29 +92,16 @@ class PSO:
         self.swarm = Swarm(n_particles, dim, c1, c2, w, pos_constraint, vel_constraint)
         self.num_iters = num_iters
 
-    def _compute_particle_cost(self, j, cost_fn: Callable):
-        # Compute its cost
-        particle_cost = cost_fn(self.swarm.positions[j])
-        # Update personal best
-        if particle_cost < self.swarm.pbest_costs[j]:
-            self.swarm.pbest_costs[j] = particle_cost
-            self.swarm.pbest[j] = self.swarm.positions[j]
-
     def optimize(self, cost_fn: Callable):
         """
-        Find best particle based on the specified cost function that evaluates a particle's cost.
+        Find best particle (minimizer) based on the specified cost function that evaluates a particle's cost.
         Terminates by number of iterations.
         """
 
         # Reinitialize swarm
         self.swarm.reset()
-        # compute_particle_cost_fn = functools.partial(self._compute_particle_cost, cost_fn=cost_fn)
 
         for _ in tqdm.tqdm(range(self.num_iters)):
-            # Parallelizing seems slower...
-            # with mp.Pool(processes=4) as pool:
-            #     pool.map(compute_particle_cost_fn, torch.arange(self.swarm.n_particles))
-
             # Evaluate all particles's costs at their current positions, and update their personal bests.
             for j in range(self.swarm.n_particles):
                 # Compute its cost
@@ -125,9 +110,7 @@ class PSO:
                 if particle_cost < self.swarm.pbest_costs[j]:
                     self.swarm.pbest_costs[j] = particle_cost
                     self.swarm.pbest[j] = self.swarm.positions[j]
-
-            # Update global best from the new personal bests
-            for j in range(self.swarm.n_particles):
+                # Update global best
                 if self.swarm.pbest_costs[j] < self.swarm.gbest_cost:
                     self.swarm.gbest_cost = self.swarm.pbest_costs[j]
                     self.swarm.gbest = self.swarm.positions[j]
