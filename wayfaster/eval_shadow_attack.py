@@ -18,14 +18,11 @@ from adversarial_attacks.shadow_attacker_optimized import ShadowAttack
 import tqdm
 import wandb
 
-
-
-
 # RUN COMMAND:  python3 wayfaster/eval_shadow_attack.py
 
 # Parameters. For quick testing, just evaluate on val
-BATCH_SIZE = 10
-TRAIN_BATCH_END_IDX = 1
+BATCH_SIZE = 5
+BATCH_END_IDX = float('inf')
 LOGGER_RUN_NAME = "shadow_attack_eval"
 EVALUATE_ON_TRAIN = False
 EVALUATE_ON_VAL = True
@@ -62,11 +59,10 @@ def visualize_input_output(
 def load_data(configs):
     train_dataset, train_loader, valid_dataset, valid_loader = None, None, None, None
     
-    # Create indices to represent subset of dataset (get every sixth elements due to sequence length)
-    indices = list(range(0, len(dataset), 6))
-
     if EVALUATE_ON_TRAIN:
         train_dataset = Dataset(configs, configs.DATASET.TRAIN_DATA)
+        # Create indices to represent subset of dataset (get every sixth elements due to sequence length)
+        indices = list(range(0, len(train_dataset), 6))
         train_dataset = Subset(train_dataset, indices)
         train_loader = DataLoader(
             train_dataset,
@@ -77,6 +73,8 @@ def load_data(configs):
         )
     if EVALUATE_ON_VAL:
         valid_dataset = Dataset(configs, configs.DATASET.VALID_DATA)
+        # Create indices to represent subset of dataset (get every sixth elements due to sequence length)
+        indices = list(range(0, len(valid_dataset), 6))
         valid_dataset = Subset(valid_dataset, indices)
         valid_loader = DataLoader(
             valid_dataset,
@@ -99,7 +97,7 @@ def evaluate_attacker(trav_model, dataloader, attacker, dataloader_prefix: str):
         trav_model.eval()
 
         for batch_idx, batch in tqdm.tqdm(enumerate(dataloader)):
-            if batch_idx == TRAIN_BATCH_END_IDX:
+            if batch_idx == BATCH_END_IDX:
                 break
             # Unperturbed data:
             color_img, pcloud, inv_intrinsics, extrinsics, path, target_trav, trav_weights, depth_target, depth_mask = batch  # fmt: skip
@@ -143,7 +141,8 @@ def main():
     # Parse config file
     CONFIG_FILE_PATH = "configs/temporal_model.yaml"
     configs = get_cfg(CONFIG_FILE_PATH)
-
+    print(configs)
+    
     # Set seed and device
     pl.seed_everything(configs.SEED, workers=True)
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -168,17 +167,19 @@ def main():
 
     # Set up adversarial attacker (Don't change parameters, its fast but at the expense of a lot of memory... will crash your PC, I will run this on cluster.)
     attacker = ShadowAttack(trav_model)
-    attacker.PSO_params["num_iters"] = 2
-    attacker.PSO_params["n_particles"] = 2
+    attacker.PSO_params["num_iters"] = 20
+    attacker.PSO_params["n_particles"] = 10
     print("Shadow Attack PSO Parameters: ")
     print(attacker.PSO_params)
 
     # Evaluate adversarial attacks on train set (results are logged)
     if EVALUATE_ON_TRAIN:
+        print("Number of datapoints in train: ", len(train_dataset))
         evaluate_attacker(trav_model, train_loader, attacker, dataloader_prefix="train")
 
     # Evaluate adversarial attacks on validation set (results are logged)
     if EVALUATE_ON_VAL:
+        print("Number of datapoints in valid: ", len(valid_dataset))
         evaluate_attacker(trav_model, valid_loader, attacker, dataloader_prefix="val")
 
 

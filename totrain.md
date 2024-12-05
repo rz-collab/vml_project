@@ -1,8 +1,12 @@
-srun --partition=gpu --nodes=1 --gres=gpu:v100-sxm2:1 --ntasks=1 --cpus-per-task=8 --mem=32G --time=04:00:00 python3 -u wayfaster/train.py --cfg_file configs/temporal_model.yaml
+srun --partition=gpu --nodes=1 --gres=gpu:v100-sxm2:1 --ntasks=1 --cpus-per-task=4 --mem=128G --time=04:00:00 python3 -u wayfaster/train.py --cfg_file configs/temporal_model.yaml
+srun --partition=gpu --nodes=1 --gres=gpu:v100-sxm2:1 --ntasks=1 --cpus-per-task=4 --mem=128G --time=04:00:00 python3 wayfaster/eval_shadow_attack.py
+srun --partition=gpu --nodes=1 --pty --gres=gpu:v100-sxm2:1 --ntasks=1 --cpus-per-task=4 --mem=128G --time=04:00:00 /bin/bash
+
+
 
 module load cuda/12.1
 source activate vml2
-srun --partition=gpu --nodes=1 --pty --gres=gpu:v100-sxm2:1 --ntasks=1 --mem=4GB --time=01:00:00 /bin/bash
+<srun> stuff
 gdb --args python3 -u wayfaster/train.py --cfg_file configs/temporal_model.yaml
 
 Test:
