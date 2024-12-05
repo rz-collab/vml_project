@@ -6,6 +6,7 @@ import numpy as np
 import sys
 
 from torch.utils.data import DataLoader
+from torch.utils.data import Subset
 from pytorch_lightning.loggers import WandbLogger
 
 # Custom packages
@@ -18,10 +19,12 @@ import tqdm
 import wandb
 
 
+
+
 # RUN COMMAND:  python3 wayfaster/eval_shadow_attack.py
 
 # Parameters. For quick testing, just evaluate on val
-BATCH_SIZE = 5
+BATCH_SIZE = 10
 TRAIN_BATCH_END_IDX = 1
 LOGGER_RUN_NAME = "shadow_attack_eval"
 EVALUATE_ON_TRAIN = False
@@ -58,8 +61,13 @@ def visualize_input_output(
 
 def load_data(configs):
     train_dataset, train_loader, valid_dataset, valid_loader = None, None, None, None
+    
+    # Create indices to represent subset of dataset (get every sixth elements due to sequence length)
+    indices = list(range(0, len(dataset), 6))
+
     if EVALUATE_ON_TRAIN:
         train_dataset = Dataset(configs, configs.DATASET.TRAIN_DATA)
+        train_dataset = Subset(train_dataset, indices)
         train_loader = DataLoader(
             train_dataset,
             batch_size=BATCH_SIZE,
@@ -69,6 +77,7 @@ def load_data(configs):
         )
     if EVALUATE_ON_VAL:
         valid_dataset = Dataset(configs, configs.DATASET.VALID_DATA)
+        valid_dataset = Subset(valid_dataset, indices)
         valid_loader = DataLoader(
             valid_dataset,
             batch_size=BATCH_SIZE,
