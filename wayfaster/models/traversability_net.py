@@ -30,7 +30,7 @@ class TravNet(nn.Module):
         predict_depth=True,
         fuse_pcloud=True,
     ):
-        super(TravNet, self).__init__()
+        super().__init__()
 
         self.grid_bounds = grid_bounds
         self.input_size = (input_size[1], input_size[0])
@@ -40,17 +40,9 @@ class TravNet(nn.Module):
         self.fuse_pcloud = fuse_pcloud
         self.eps = 1e-6
 
-        dx = torch.Tensor(
-            [
-                row[2]
-                for row in [grid_bounds["xbound"], grid_bounds["ybound"], grid_bounds["zbound"]]
-            ]
-        )
+        dx = torch.Tensor([row[2] for row in [grid_bounds["xbound"], grid_bounds["ybound"], grid_bounds["zbound"]]])
         bx = torch.Tensor(
-            [
-                row[0] + row[2] / 2.0
-                for row in [grid_bounds["xbound"], grid_bounds["ybound"], grid_bounds["zbound"]]
-            ]
+            [row[0] + row[2] / 2.0 for row in [grid_bounds["xbound"], grid_bounds["ybound"], grid_bounds["zbound"]]]
         )
         nx = torch.LongTensor(
             [
@@ -76,9 +68,7 @@ class TravNet(nn.Module):
 
         # Define predicted depth dimension
         if self.predict_depth:
-            self.D = int(
-                (grid_bounds["dbound"][1] - grid_bounds["dbound"][0]) / grid_bounds["dbound"][2]
-            )
+            self.D = int((grid_bounds["dbound"][1] - grid_bounds["dbound"][0]) / grid_bounds["dbound"][2])
         else:
             self.D = 0
 
@@ -95,9 +85,7 @@ class TravNet(nn.Module):
 
         # Bird's eye view compressor
         self.bev_compressor = nn.Sequential(
-            nn.Conv2d(
-                self.camC * self.nx[2] + pcloud_dim, self.camC, kernel_size=3, padding=1, bias=False
-            ),
+            nn.Conv2d(self.camC * self.nx[2] + pcloud_dim, self.camC, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(self.camC),
             nn.ReLU(inplace=True),
         )
@@ -250,7 +238,7 @@ class TravNet(nn.Module):
         # X is B x T x C x Z x X x Y ->  B*T x C*Z x X x Y
         # The BEV frame is represented by Z x X x Y (What ZXY means seems to be just the standard XYZ but permuted, because it makes sense to put C*Z together)
         x = x.view(B * T, -1, *x.shape[4:])
-        pcloud = pcloud.view(B * T, *pcloud.shape[2:])
+        pcloud = pcloud.reshape(B * T, *pcloud.shape[2:])
         debug = x
 
         if self.fuse_pcloud:
